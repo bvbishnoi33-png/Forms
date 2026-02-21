@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Form | Professional Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-slate-50 font-['Inter'] antialiased">
+
+    <div id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-slate-900 text-white transform -translate-x-full transition-transform duration-300 z-50 shadow-2xl">
+        <div class="p-8">
+            <h2 class="text-2xl font-bold text-blue-400 mb-10">Menu</h2>
+            <nav class="space-y-6 text-lg">
+                <a href="#" onclick="showPage('user-home')" class="block hover:text-blue-400 transition">🏠 Home Page</a>
+                <a href="#" onclick="showPage('user-home')" class="block hover:text-blue-400 transition">📝 Available Forms</a>
+                <a href="#" onclick="showPage('about-us')" class="block hover:text-blue-400 transition">ℹ️ About Us</a>
+                <hr class="border-slate-700">
+                <a href="#" onclick="showPage('admin-login')" class="block text-amber-400 hover:text-amber-300 font-semibold">🔐 Admin Portal</a>
+            </nav>
+        </div>
+    </div>
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <button onclick="toggleSidebar()" class="text-2xl p-2 hover:bg-slate-100 rounded-lg">☰</button>
+            <div class="text-xl font-black tracking-tighter text-slate-800">
+                FORM<span class="text-blue-600">FLOW</span> <span class="text-xs font-medium bg-blue-100 text-blue-600 px-2 py-1 rounded ml-2">2026</span>
+            </div>
+            <div id="admin-indicator" class="hidden text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">ADMIN ACTIVE</div>
+        </div>
+    </header>
+
+    <main id="main-content" class="container mx-auto px-6 py-12 min-h-screen">
+        </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-12">
+        <div class="container mx-auto px-6 text-center">
+            <p class="mb-2">Professional Form Management System</p>
+            <p class="text-sm font-medium">Copyright © 2026 Vipul Bishnoi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <div id="modal-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 animate-fade-in">
+            </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
