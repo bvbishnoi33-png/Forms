@@ -65,25 +65,52 @@
         }
 
         async function loadUserForms() {
-            const grid = document.getElementById('forms-grid');
-            grid.innerHTML = '<p class="col-span-full text-center py-20">Searching for forms...</p>';
-            try {
-                const snap = await db.collection('forms').where('visible', '==', true).get();
-                grid.innerHTML = "";
-                if(snap.empty) {
-                    grid.innerHTML = '<p class="col-span-full text-center py-20 text-slate-400">No active forms found.</p>';
-                    return;
-                }
-                snap.forEach(doc => {
-                    const f = doc.data();
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl cursor-pointer transition-all";
-                    card.innerHTML = `<h3 class="text-xl font-bold">${f.name}</h3><p class="text-blue-500 mt-4 font-bold text-sm">Open & Fill &rarr;</p>`;
-                    card.onclick = () => window.location.href = `fill.html?id=${doc.id}`;
-                    grid.appendChild(card);
-                });
-            } catch(e) { grid.innerHTML = "Error loading database."; }
+    const grid = document.getElementById('forms-grid');
+    grid.innerHTML = '<div class="col-span-full text-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div><p>Connecting to Database...</p></div>';
+
+    try {
+        // Adding a 5-second timeout check
+        const timeout = setTimeout(() => {
+            if (grid.innerText.includes("Connecting")) {
+                grid.innerHTML = '<p class="col-span-full text-center py-20 text-red-500">Connection Timeout. Check your Internet or Firebase Rules.</p>';
+            }
+        }, 5000);
+
+        const snap = await db.collection('forms').where('visible', '==', true).get();
+        clearTimeout(timeout);
+
+        grid.innerHTML = "";
+        if (snap.empty) {
+            grid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400 border-2 border-dashed rounded-3xl">No forms are currently enabled by Admin.</div>';
+            return;
         }
+
+        snap.forEach(doc => {
+            const f = doc.data();
+            const card = document.createElement('div');
+            card.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-blue-500 cursor-pointer transition-all transform hover:-translate-y-1";
+            card.innerHTML = `
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">📄</div>
+                <h3 class="text-xl font-bold text-slate-800">${f.name}</h3>
+                <p class="text-slate-400 text-sm mt-1">Available for submission</p>
+                <button class="mt-6 w-full py-2 bg-slate-50 text-blue-600 font-bold rounded-lg group-hover:bg-blue-600 group-hover:text-white transition">Fill Form</button>
+            `;
+            // Fixed Link logic
+            card.onclick = () => {
+                if(confirm(`Do you want to open "${f.name}"?`)) {
+                    window.location.href = `fill.html?id=${doc.id}`;
+                }
+            };
+            grid.appendChild(card);
+        });
+    } catch (e) {
+        console.error("Firebase Error:", e);
+        grid.innerHTML = `<div class="col-span-full text-center py-20 text-red-500 bg-red-50 rounded-2xl border border-red-100">
+            <strong>Database Error</strong><br>${e.message}
+        </div>`;
+    }
+}
+
 
         function showAbout() {
             const modal = document.getElementById('modal-overlay');
