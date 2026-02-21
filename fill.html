@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Form | VIPUL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 py-10 px-4">
+    <div class="max-w-xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+        <h2 id="form-title" class="text-3xl font-bold mb-8 text-slate-800">Loading Form...</h2>
+        <form id="dynamic-form" class="space-y-6">
+            </form>
+    </div>
+
+    <script>
+        const firebaseConfig = { /* PASTE YOUR CONFIG HERE */ };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const formId = urlParams.get('id');
+
+        async function loadForm() {
+            const doc = await db.collection('forms').doc(formId).get();
+            const data = doc.data();
+            document.getElementById('form-title').innerText = data.name;
+
+            const form = document.getElementById('dynamic-form');
+            data.fields.forEach(f => {
+                const div = document.createElement('div');
+                div.innerHTML = `<label class="block text-sm font-bold mb-2">${f.label}</label>`;
+                
+                if(f.type === 'text') {
+                    div.innerHTML += `<input type="text" name="${f.id}" required class="w-full p-3 border rounded-xl bg-slate-50">`;
+                } else if(f.type === 'textarea') {
+                    div.innerHTML += `<textarea name="${f.id}" maxlength="${f.limit}" required class="w-full p-3 border rounded-xl bg-slate-50 h-32" oninput="updateCharCount(this, ${f.limit})"></textarea>
+                                      <p class="text-[10px] text-right text-slate-400">0 / ${f.limit}</p>`;
+                } else if(f.type === 'tel') {
+                    div.innerHTML += `<div class="flex gap-2">
+                        <span class="bg-slate-100 p-3 rounded-xl border text-slate-500 font-bold">+91</span>
+                        <input type="tel" pattern="[0-9]{10}" name="${f.id}" required class="flex-1 p-3 border rounded-xl bg-slate-50" placeholder="10 Digit Mobile">
+                    </div>`;
+                } else if(f.type === 'checkbox') {
+                    div.innerHTML = `<label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                        <input type="checkbox" name="${f.id}" class="w-5 h-5"> <span>${f.label}</span>
+                    </label>`;
+                }
+                form.appendChild(div);
+            });
+
+            form.innerHTML += `
+                <div class="flex gap-4 pt-6">
+                    <button type="button" onclick="confirmClear()" class="flex-1 py-3 text-slate-500">Clear All</button>
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Submit Response</button>
+                </div>
+            `;
+
+            form.onsubmit = handleSubmit;
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            if(!confirm("Are you sure you want to submit this form?")) return;
+            
+            const formData = new FormData(e.target);
+            const payload = { timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+            formData.forEach((value, key) => payload[key] = value);
+
+            await db.collection('submissions').doc(formId).collection('entries').add(payload);
+            alert("Success! Form submitted.");
+            window.location.href = "index.html";
+        }
+
+        function updateCharCount(el, limit) {
+            el.nextElementSibling.innerText = `${el.value.length} / ${limit}`;
+        }
+
+        function confirmClear() {
+            if(confirm("Are you sure you want to clear all inputs?")) document.getElementById('dynamic-form').reset();
+        }
+
+        loadForm();
+    </script>
+</body>
+</html>
+
