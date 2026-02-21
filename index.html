@@ -3,48 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPUL | Professional Form Portal</title>
+    <title>VIPUL | User Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
+<body class="bg-slate-50 text-slate-900">
 
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden transition-opacity duration-300"></div>
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden"></div>
 
-    <nav id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-slate-900 text-white transform -translate-x-full transition-transform duration-300 z-50 shadow-2xl">
-        <div class="p-8 h-full flex flex-col">
+    <nav id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-slate-900 text-white transform -translate-x-full transition-transform duration-300 z-50">
+        <div class="p-8 flex flex-col h-full">
             <div class="flex justify-between items-center mb-10">
-                <h2 class="text-xl font-bold text-blue-400">VIPUL BISHNOI</h2>
-                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white text-2xl transition">&times;</button>
+                <h2 class="text-xl font-bold text-blue-400">VIPUL</h2>
+                <button onclick="toggleSidebar()" class="text-2xl">&times;</button>
             </div>
-            
-            <div class="space-y-6 flex-1">
-                <button onclick="showPage('user-home')" class="flex items-center gap-3 w-full text-left py-2 hover:text-blue-400 transition">🏠 User Portal</button>
-                <button onclick="showPage('admin-login')" class="flex items-center gap-3 w-full text-left py-2 hover:text-blue-400 transition">🔐 Admin Dashboard</button>
-                <button onclick="showPage('about')" class="flex items-center gap-3 w-full text-left py-2 hover:text-blue-400 transition">ℹ️ About Us</button>
-            </div>
-
-            <div class="mt-auto pt-6 border-t border-slate-800 text-xs text-slate-500">
-                V. 2.0.26 - Stable
+            <div class="space-y-6">
+                <a href="index.html" class="block hover:text-blue-400 transition">🏠 User Home</a>
+                <a href="admin.html" class="block hover:text-blue-400 transition">🔐 Admin Portal</a>
+                <button onclick="showAbout()" class="block w-full text-left hover:text-blue-400 transition">ℹ️ About Us</button>
             </div>
         </div>
     </nav>
 
-    <header class="sticky top-0 z-30 glass border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg text-2xl">☰</button>
-        <h1 class="text-lg font-black tracking-widest text-blue-600">FORM<span class="text-slate-800">CRAFT</span></h1>
-        <div id="auth-status" class="text-[10px] font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100 uppercase tracking-tighter">Guest Mode</div>
+    <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-6 py-4 flex justify-between items-center">
+        <button onclick="toggleSidebar()" class="p-2 text-2xl">☰</button>
+        <h1 class="text-lg font-black tracking-widest text-blue-600 uppercase">Vipul Form Portal</h1>
+        <div class="w-10"></div>
     </header>
 
     <main id="app-content" class="container mx-auto px-4 py-10 min-h-screen">
-        </main>
+        <h2 class="text-3xl font-bold mb-10 text-center">Available Portals</h2>
+        <div id="forms-grid" class="grid md:grid-cols-3 gap-6">
+            </div>
+    </main>
 
     <footer class="bg-white border-t py-10 text-center text-slate-400 text-sm">
-        <p class="mb-2">Professional Form Management System</p>
         <p>© 2026 Vipul Bishnoi. All Rights Reserved.</p>
     </footer>
 
@@ -52,23 +47,62 @@
         <div id="modal-box" class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 animate-in"></div>
     </div>
 
-    <div id="response-view-modal" class="fixed inset-0 bg-white z-[70] hidden flex flex-col animate-in overflow-hidden">
-        <div class="flex justify-between items-center p-6 border-b">
-            <div>
-                <h2 id="response-title" class="text-2xl font-bold text-slate-800 underline decoration-blue-500">Submissions</h2>
-            </div>
-            <button onclick="closeResponseModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-red-100 hover:text-red-600 transition text-2xl">&times;</button>
-        </div>
-        <div class="p-4 bg-slate-50 flex flex-wrap gap-3 items-center border-b">
-            <button onclick="deleteSelected()" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-100 transition">🗑️ Delete Selected</button>
-            <button onclick="deleteAllResponses()" class="bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-700 transition">⚠️ Clear All Records</button>
-            <button onclick="exportToCSV()" class="ml-auto bg-green-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-green-700 transition">📊 Export to Sheets</button>
-        </div>
-        <div class="flex-1 overflow-auto p-6 bg-slate-50">
-            <table id="response-table" class="w-full text-left bg-white rounded-xl shadow-sm overflow-hidden"></table>
-        </div>
-    </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXB_3ONshkBQznaLH2xsZZ9kN3meXcvc8",
+            authDomain: "form-6cf5d.firebaseapp.com",
+            projectId: "form-6cf5d",
+            storageBucket: "form-6cf5d.firebasestorage.app",
+            messagingSenderId: "557559151440",
+            appId: "1:557559151440:web:25690655f29f2434f08a55"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-    <script src="app.js"></script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.toggle('hidden');
+        }
+
+        async function loadUserForms() {
+            const grid = document.getElementById('forms-grid');
+            grid.innerHTML = '<p class="col-span-full text-center py-20">Searching for forms...</p>';
+            try {
+                const snap = await db.collection('forms').where('visible', '==', true).get();
+                grid.innerHTML = "";
+                if(snap.empty) {
+                    grid.innerHTML = '<p class="col-span-full text-center py-20 text-slate-400">No active forms found.</p>';
+                    return;
+                }
+                snap.forEach(doc => {
+                    const f = doc.data();
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl cursor-pointer transition-all";
+                    card.innerHTML = `<h3 class="text-xl font-bold">${f.name}</h3><p class="text-blue-500 mt-4 font-bold text-sm">Open & Fill &rarr;</p>`;
+                    card.onclick = () => window.location.href = `fill.html?id=${doc.id}`;
+                    grid.appendChild(card);
+                });
+            } catch(e) { grid.innerHTML = "Error loading database."; }
+        }
+
+        function showAbout() {
+            const modal = document.getElementById('modal-overlay');
+            const box = document.getElementById('modal-box');
+            modal.classList.remove('hidden');
+            box.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4">About Developer</h2>
+                <div class="space-y-3 mb-8">
+                    <p><strong>Name:</strong> Vipul Bishnoi</p>
+                    <p><strong>Contact:</strong> +91 94xxxxxx07</p>
+                    <p><strong>Email:</strong> <a href="mailto:vipulbishnoi2992@gmail.com" class="text-blue-600 underline">vipulbishnoi2992@gmail.com</a></p>
+                </div>
+                <a href="https://resume-vipul.netlify.app/" target="_blank" class="block w-full py-4 bg-slate-900 text-white text-center rounded-xl font-bold">Visit Portfolio</a>
+                <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="w-full mt-4 text-slate-400 text-sm">Close</button>
+            `;
+            toggleSidebar();
+        }
+
+        loadUserForms();
+    </script>
 </body>
 </html>
