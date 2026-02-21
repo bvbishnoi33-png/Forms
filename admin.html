@@ -1,46 +1,70 @@
-<div id="form-builder-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
-        <h3 class="text-2xl font-bold mb-6">Design Your Form</h3>
+<div id="form-builder-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] hidden flex items-center justify-center p-0 md:p-6">
+    <div class="bg-white w-full max-w-5xl h-full md:h-[90vh] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in">
         
-        <div class="space-y-4 mb-8">
+        <div class="p-6 border-b flex justify-between items-center bg-slate-50">
             <div>
-                <label class="text-xs font-bold uppercase text-slate-400">Form Title</label>
-                <input type="text" id="edit-form-name" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="edit-form-name" placeholder="Untitled Form Name..." class="text-2xl font-bold bg-transparent border-none outline-none focus:ring-0 text-slate-800 placeholder:text-slate-300 w-full">
+                <p class="text-xs text-blue-600 font-bold uppercase tracking-widest mt-1">Form Design Studio</p>
             </div>
-            
-            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                <p class="text-sm font-bold text-blue-800 mb-3">Add Input Element</p>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <button onclick="addNewField('text')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Text</button>
-                    <button onclick="addNewField('textarea')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Textarea</button>
-                    <button onclick="addNewField('tel')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Mobile</button>
-                    <button onclick="addNewField('checkbox')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Checkbox</button>
+            <button onclick="closeBuilder()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 transition text-2xl">&times;</button>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <div class="w-64 bg-slate-50 border-r p-6 overflow-y-auto hidden md:block">
+                <h4 class="text-xs font-black text-slate-400 uppercase mb-4">Input Elements</h4>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="addNewField('text')" class="builder-tool"><span>📝</span> Text Input</button>
+                    <button onclick="addNewField('textarea')" class="builder-tool"><span>📄</span> Long Text</button>
+                    <button onclick="addNewField('email')" class="builder-tool"><span>📧</span> Email Address</button>
+                    <button onclick="addNewField('number')" class="builder-tool"><span>🔢</span> Numbers Only</button>
+                    <button onclick="addNewField('tel')" class="builder-tool"><span>📞</span> Mobile (+91)</button>
+                    <button onclick="addNewField('radio')" class="builder-tool"><span>🔘</span> Radio Options</button>
+                    <button onclick="addNewField('select')" class="builder-tool"><span>🔽</span> Dropdown</button>
+                    <button onclick="addNewField('checkbox')" class="builder-tool"><span>✅</span> Checkbox</button>
+                    <button onclick="addNewField('date')" class="builder-tool"><span>📅</span> Date Picker</button>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-white p-8 overflow-y-auto">
+                <div id="fields-preview-container" class="max-w-xl mx-auto space-y-4">
+                    <div class="text-center py-20 text-slate-300 border-2 border-dashed rounded-3xl">
+                        <p>Your form is empty. Click elements on the left to start building.</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="fields-preview-container" class="space-y-3 mb-8">
-            </div>
-
-        <div class="flex gap-4 border-t pt-6">
-            <button onclick="closeBuilder()" class="flex-1 py-3 text-slate-500 font-bold">Cancel</button>
-            <button onclick="saveFormToFirebase()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">Save Form Structure</button>
+        <div class="p-6 border-t bg-white flex justify-end gap-4">
+            <button onclick="closeBuilder()" class="px-8 py-3 text-slate-500 font-bold hover:text-slate-800">Discard</button>
+            <button onclick="saveFormToFirebase()" class="px-10 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:scale-105 transition-all">Save & Launch Form</button>
         </div>
     </div>
 </div>
+
+<style>
+    .builder-tool {
+        @apply flex items-center gap-3 w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:border-blue-500 hover:text-blue-600 hover:shadow-md transition-all text-left;
+    }
+    .field-card {
+        @apply p-5 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between group hover:border-blue-200 hover:bg-white transition-all;
+    }
+</style>
 
 <script>
     let activeFields = [];
     let editingDocId = null;
 
     function addNewField(type) {
-        const label = prompt("Enter Field Label (e.g., Full Name, Your Message):");
+        const label = prompt(`Label for your ${type} field:`);
         if(!label) return;
 
-        let fieldObj = { type, label, id: "field_" + Date.now() };
+        let fieldObj = { type, label, id: "field_" + Math.random().toString(36).substr(2, 9), required: true };
         
-        if(type === 'textarea') {
-            fieldObj.limit = prompt("Character limit?", "200");
+        // Custom Settings for specific types
+        if(type === 'textarea') fieldObj.limit = prompt("Character limit?", "500");
+        if(type === 'radio' || type === 'select') {
+            const opts = prompt("Enter options separated by commas (e.g. Option 1, Option 2, Option 3)");
+            fieldObj.options = opts ? opts.split(',').map(o => o.trim()) : ['Default Option'];
         }
         
         activeFields.push(fieldObj);
@@ -49,53 +73,43 @@
 
     function renderFieldsPreview() {
         const container = document.getElementById('fields-preview-container');
+        if(activeFields.length === 0) {
+            container.innerHTML = `<div class="text-center py-20 text-slate-300 border-2 border-dashed rounded-3xl"><p>Start adding elements...</p></div>`;
+            return;
+        }
+
         container.innerHTML = activeFields.map((f, index) => `
-            <div class="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
-                <div>
-                    <span class="text-xs font-bold text-blue-600 uppercase tracking-tighter">${f.type}</span>
-                    <p class="font-semibold text-slate-800">${f.label} ${f.limit ? `(${f.limit} chars)` : ''}</p>
+            <div class="field-card animate-in">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-black uppercase">${f.type}</span>
+                        ${f.limit ? `<span class="text-[10px] text-slate-400 italic">Limit: ${f.limit}</span>` : ''}
+                    </div>
+                    <p class="font-bold text-slate-800">${f.label}</p>
+                    ${f.options ? `<p class="text-[10px] text-slate-500 mt-1">Options: ${f.options.join(', ')}</p>` : ''}
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="moveField(${index}, -1)" class="p-1 hover:bg-white rounded">↑</button>
-                    <button onclick="moveField(${index}, 1)" class="p-1 hover:bg-white rounded">↓</button>
-                    <button onclick="removeField(${index})" class="p-1 text-red-500 hover:bg-red-50 rounded">Delete</button>
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="moveField(${index}, -1)" class="w-8 h-8 flex items-center justify-center hover:bg-slate-200 rounded-lg">↑</button>
+                    <button onclick="moveField(${index}, 1)" class="w-8 h-8 flex items-center justify-center hover:bg-slate-200 rounded-lg">↓</button>
+                    <button onclick="removeField(${index})" class="w-8 h-8 flex items-center justify-center hover:bg-red-50 text-red-500 rounded-lg">✕</button>
                 </div>
             </div>
         `).join('');
     }
 
-    function removeField(idx) {
-        activeFields.splice(idx, 1);
+    function moveField(idx, dir) {
+        let newIdx = idx + dir;
+        if(newIdx < 0 || newIdx >= activeFields.length) return;
+        [activeFields[idx], activeFields[newIdx]] = [activeFields[newIdx], activeFields[idx]];
         renderFieldsPreview();
     }
 
-    function moveField(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex >= 0 && newIndex < activeFields.length) {
-            [activeFields[index], activeFields[newIndex]] = [activeFields[newIndex], activeFields[index]];
+    function removeField(idx) {
+        if(confirm("Delete this input column?")) {
+            activeFields.splice(idx, 1);
             renderFieldsPreview();
         }
     }
 
-    async function saveFormToFirebase() {
-        const name = document.getElementById('edit-form-name').value;
-        const data = { name, fields: activeFields, visible: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-
-        if(editingDocId) {
-            await db.collection('forms').doc(editingDocId).update(data);
-        } else {
-            await db.collection('forms').add(data);
-        }
-        location.reload();
-    }
-
-    function createNewForm() {
-        editingDocId = null;
-        activeFields = [];
-        document.getElementById('edit-form-name').value = "";
-        renderFieldsPreview();
-        document.getElementById('form-builder-modal').classList.remove('hidden');
-    }
-
-    function closeBuilder() { document.getElementById('form-builder-modal').classList.add('hidden'); }
+    // Reuse saveFormToFirebase and closeBuilder from previous version
 </script>
