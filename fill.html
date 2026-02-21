@@ -47,6 +47,33 @@
                     div.innerHTML = `<label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
                         <input type="checkbox" name="${f.id}" class="w-5 h-5"> <span>${f.label}</span>
                     </label>`;
+
+                    // Add these cases inside your f.type check in fill.html
+if(f.type === 'email') {
+    div.innerHTML += `<input type="email" name="${f.id}" required class="w-full p-4 border rounded-2xl bg-slate-50" placeholder="example@mail.com">`;
+} 
+else if(f.type === 'number') {
+    div.innerHTML += `<input type="number" name="${f.id}" required class="w-full p-4 border rounded-2xl bg-slate-50">`;
+}
+else if(f.type === 'date') {
+    div.innerHTML += `<input type="date" name="${f.id}" required class="w-full p-4 border rounded-2xl bg-slate-50">`;
+}
+else if(f.type === 'radio') {
+    f.options.forEach(opt => {
+        div.innerHTML += `
+            <label class="flex items-center gap-3 mb-2 cursor-pointer group">
+                <input type="radio" name="${f.id}" value="${opt}" required class="w-5 h-5 text-blue-600">
+                <span class="group-hover:text-blue-600 transition">${opt}</span>
+            </label>`;
+    });
+}
+else if(f.type === 'select') {
+    let selectHtml = `<select name="${f.id}" required class="w-full p-4 border rounded-2xl bg-slate-50">`;
+    f.options.forEach(opt => selectHtml += `<option value="${opt}">${opt}</option>`);
+    selectHtml += `</select>`;
+    div.innerHTML += selectHtml;
+}
+                    
                 }
                 form.appendChild(div);
             });
