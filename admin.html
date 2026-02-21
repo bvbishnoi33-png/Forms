@@ -1,122 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPUL | Admin Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-</head>
-<body class="bg-slate-100 min-h-screen">
-
-    <div id="login-view" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-6">Admin Access</h2>
-            <input type="email" id="email" placeholder="Admin Email" class="w-full p-4 mb-4 border rounded-xl bg-slate-50">
-            <input type="password" id="pass" placeholder="Password" class="w-full p-4 mb-6 border rounded-xl bg-slate-50">
-            <button onclick="handleLogin()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition">Authenticate</button>
-            <a href="index.html" class="block text-center mt-6 text-slate-400 text-sm">Back to Home</a>
-        </div>
-    </div>
-
-    <div id="admin-view" class="hidden">
-        <nav class="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm">
-            <h1 class="text-xl font-bold">Admin <span class="text-blue-600">Dashboard</span></h1>
-            <button onclick="firebase.auth().signOut()" class="text-red-500 font-bold">Logout</button>
-        </nav>
-
-        <div class="container mx-auto p-6">
-            <div class="flex justify-between items-center mb-10">
-                <h3 class="text-2xl font-bold">Manage Forms</h3>
-                <button onclick="createNewForm()" class="bg-slate-900 text-white px-6 py-2 rounded-xl">+ Create Form</button>
+<div id="form-builder-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
+        <h3 class="text-2xl font-bold mb-6">Design Your Form</h3>
+        
+        <div class="space-y-4 mb-8">
+            <div>
+                <label class="text-xs font-bold uppercase text-slate-400">Form Title</label>
+                <input type="text" id="edit-form-name" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             
-            <div id="admin-list" class="grid gap-4">
+            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                <p class="text-sm font-bold text-blue-800 mb-3">Add Input Element</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <button onclick="addNewField('text')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Text</button>
+                    <button onclick="addNewField('textarea')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Textarea</button>
+                    <button onclick="addNewField('tel')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Mobile</button>
+                    <button onclick="addNewField('checkbox')" class="bg-white p-2 rounded-lg text-xs border hover:border-blue-500">+ Checkbox</button>
                 </div>
+            </div>
+        </div>
+
+        <div id="fields-preview-container" class="space-y-3 mb-8">
+            </div>
+
+        <div class="flex gap-4 border-t pt-6">
+            <button onclick="closeBuilder()" class="flex-1 py-3 text-slate-500 font-bold">Cancel</button>
+            <button onclick="saveFormToFirebase()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">Save Form Structure</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // Use the same Firebase Config as index.html
-        const firebaseConfig = {
-            apiKey: "AIzaSyCXB_3ONshkBQznaLH2xsZZ9kN3meXcvc8",
-            authDomain: "form-6cf5d.firebaseapp.com",
-            projectId: "form-6cf5d",
-            storageBucket: "form-6cf5d.firebasestorage.app",
-            messagingSenderId: "557559151440",
-            appId: "1:557559151440:web:25690655f29f2434f08a55"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+<script>
+    let activeFields = [];
+    let editingDocId = null;
 
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('admin-view').classList.remove('hidden');
-                loadAdminForms();
-            } else {
-                document.getElementById('login-view').classList.remove('hidden');
-                document.getElementById('admin-view').classList.add('hidden');
-            }
-        });
+    function addNewField(type) {
+        const label = prompt("Enter Field Label (e.g., Full Name, Your Message):");
+        if(!label) return;
 
-        async function handleLogin() {
-            const e = document.getElementById('email').value;
-            const p = document.getElementById('pass').value;
-            try { await auth.signInWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
-        }
-
-        async function loadAdminForms() {
-            const list = document.getElementById('admin-list');
-            list.innerHTML = "Refreshing list...";
-            const snap = await db.collection('forms').get();
-            list.innerHTML = "";
-            snap.forEach(doc => {
-                const f = doc.data();
-                const div = document.createElement('div');
-                div.className = "bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm";
-                div.innerHTML = `
-                    <div>
-                        <h4 class="font-bold">${f.name}</h4>
-                        <p class="text-xs ${f.visible ? 'text-green-500' : 'text-slate-400'}">${f.visible ? 'VISIBLE' : 'HIDDEN'}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="toggleForm('${doc.id}', ${f.visible})" class="px-4 py-2 bg-slate-100 rounded-lg text-xs font-bold">${f.visible ? 'Hide' : 'Show'}</button>
-                        <button onclick="deleteForm('${doc.id}')" class="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold">Delete</button>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        async function toggleForm(id, state) {
-            await db.collection('forms').doc(id).update({ visible: !state });
-            loadAdminForms();
-        }
-
-        async function deleteForm(id) {
-            if(confirm("Delete this form?")) {
-                await db.collection('forms').doc(id).delete();
-                loadAdminForms();
-            }
+        let fieldObj = { type, label, id: "field_" + Date.now() };
+        
+        if(type === 'textarea') {
+            fieldObj.limit = prompt("Character limit?", "200");
         }
         
-        async function createNewForm() {
-            const name = prompt("Enter Form Name:");
-            if(name) {
-                await db.collection('forms').add({
-                    name: name,
-                    visible: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                loadAdminForms();
-            }
-        }
-    </script>
-</body>
-</html>
+        activeFields.push(fieldObj);
+        renderFieldsPreview();
+    }
 
+    function renderFieldsPreview() {
+        const container = document.getElementById('fields-preview-container');
+        container.innerHTML = activeFields.map((f, index) => `
+            <div class="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
+                <div>
+                    <span class="text-xs font-bold text-blue-600 uppercase tracking-tighter">${f.type}</span>
+                    <p class="font-semibold text-slate-800">${f.label} ${f.limit ? `(${f.limit} chars)` : ''}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="moveField(${index}, -1)" class="p-1 hover:bg-white rounded">↑</button>
+                    <button onclick="moveField(${index}, 1)" class="p-1 hover:bg-white rounded">↓</button>
+                    <button onclick="removeField(${index})" class="p-1 text-red-500 hover:bg-red-50 rounded">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function removeField(idx) {
+        activeFields.splice(idx, 1);
+        renderFieldsPreview();
+    }
+
+    function moveField(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex >= 0 && newIndex < activeFields.length) {
+            [activeFields[index], activeFields[newIndex]] = [activeFields[newIndex], activeFields[index]];
+            renderFieldsPreview();
+        }
+    }
+
+    async function saveFormToFirebase() {
+        const name = document.getElementById('edit-form-name').value;
+        const data = { name, fields: activeFields, visible: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+
+        if(editingDocId) {
+            await db.collection('forms').doc(editingDocId).update(data);
+        } else {
+            await db.collection('forms').add(data);
+        }
+        location.reload();
+    }
+
+    function createNewForm() {
+        editingDocId = null;
+        activeFields = [];
+        document.getElementById('edit-form-name').value = "";
+        renderFieldsPreview();
+        document.getElementById('form-builder-modal').classList.remove('hidden');
+    }
+
+    function closeBuilder() { document.getElementById('form-builder-modal').classList.add('hidden'); }
+</script>
