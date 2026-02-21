@@ -1,3 +1,4 @@
+// CONFIG (Already contains your Keys)
 const firebaseConfig = {
   apiKey: "AIzaSyCXB_3ONshkBQznaLH2xsZZ9kN3meXcvc8",
   authDomain: "form-6cf5d.firebaseapp.com",
@@ -12,154 +13,124 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let activeFormId = null;
+// UI CONTROL
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isHidden = sidebar.classList.contains('-translate-x-full');
 
-// Navigation
-const toggleSidebar = () => document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    if (isHidden) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+    }
+}
 
 function showPage(page) {
     const main = document.getElementById('app-content');
-    document.getElementById('sidebar').classList.add('-translate-x-full');
-    main.innerHTML = '<div class="text-center py-20">Loading...</div>';
+    if (!document.getElementById('sidebar').classList.contains('-translate-x-full')) {
+        toggleSidebar();
+    }
+    
+    main.innerHTML = `<div class="flex justify-center py-20"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>`;
 
     if (page === 'user-home') renderUserHome(main);
     if (page === 'admin-login') renderAdminLogin(main);
+    if (page === 'admin-dash') renderAdminDashboard(main); // Fixed Dash Route
     if (page === 'about') renderAbout(main);
 }
 
-// User Portal
-async function renderUserHome(container) {
-    container.innerHTML = `<h2 class="text-3xl font-bold mb-10 text-center">Open Submission Portals</h2><div id="forms-grid" class="grid md:grid-cols-3 gap-6"></div>`;
-    const snap = await db.collection('forms').where('visible', '==', true).get();
-    const grid = document.getElementById('forms-grid');
-    
-    if (snap.empty) grid.innerHTML = `<p class="col-span-full text-center text-slate-400">No forms currently active.</p>`;
-    
-    snap.forEach(doc => {
-        const f = doc.data();
-        const card = document.createElement('div');
-        card.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl cursor-pointer transition-all";
-        card.innerHTML = `<h3 class="text-xl font-bold">${f.name}</h3><p class="text-blue-500 mt-2">Click to Open &rarr;</p>`;
-        card.onclick = () => openFormConfirm(doc.id, f.name);
-        grid.appendChild(card);
-    });
-}
-
-function openFormConfirm(id, name) {
-    const modal = document.getElementById('modal-overlay');
-    modal.classList.remove('hidden');
-    document.getElementById('modal-box').innerHTML = `
-        <h2 class="text-2xl font-bold mb-4">Confirmation</h2>
-        <p class="mb-8">Are you sure you want to fill out <b>${name}</b>?</p>
-        <div class="flex gap-4">
-            <button onclick="closeModal()" class="flex-1 py-3 text-slate-500">Cancel</button>
-            <button onclick="startForm('${id}')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Confirm</button>
-        </div>
-    `;
-}
-
-// Submissions & Data Management (Admin Side)
-async function viewResponses(formId, formName) {
-    activeFormId = formId;
-    document.getElementById('response-view-modal').classList.remove('hidden');
-    document.getElementById('response-title').innerText = `Submissions: ${formName}`;
-    loadResponseTable();
-}
-
-async function loadResponseTable() {
-    const table = document.getElementById('response-table');
-    table.innerHTML = `<tr><td class="p-4">Fetching data...</td></tr>`;
-    
-    const snap = await db.collection('submissions').doc(activeFormId).collection('entries').get();
-    
-    if (snap.empty) {
-        table.innerHTML = `<tr><td class="p-10 text-center text-slate-400">No responses yet.</td></tr>`;
+// ADMIN LOGIN FIX
+function renderAdminLogin(container) {
+    // If already logged in, skip login
+    if (auth.currentUser) {
+        showPage('admin-dash');
         return;
     }
 
-    let headers = ['Select', ...Object.keys(snap.docs[0].data()).filter(k => k !== 'timestamp'), 'Action'];
-    let html = `<thead class="bg-white sticky top-0 border-b"><tr>`;
-    headers.forEach(h => html += `<th class="p-4 text-xs uppercase font-bold text-slate-500">${h}</th>`);
-    html += `</tr></thead><tbody>`;
-
-    snap.forEach(doc => {
-        const data = doc.data();
-        html += `<tr class="border-b bg-white hover:bg-slate-50">
-            <td class="p-4"><input type="checkbox" class="resp-check" value="${doc.id}"></td>
-            ${headers.slice(1, -1).map(h => `<td class="p-4 text-sm">${data[h] || '-'}</td>`).join('')}
-            <td class="p-4 text-red-500"><button onclick="deleteSingle('${doc.id}')">Delete</button></td>
-        </tr>`;
-    });
-    table.innerHTML = html + `</tbody>`;
-}
-
-async function deleteSingle(docId) {
-    if(confirm("Delete this specific response?")) {
-        await db.collection('submissions').doc(activeFormId).collection('entries').doc(docId).delete();
-        loadResponseTable();
-    }
-}
-
-async function deleteSelected() {
-    const checks = document.querySelectorAll('.resp-check:checked');
-    if(checks.length === 0) return alert("Select responses first");
-    if(confirm(`Delete ${checks.length} selected items?`)) {
-        const batch = db.batch();
-        checks.forEach(c => {
-            const ref = db.collection('submissions').doc(activeFormId).collection('entries').doc(c.value);
-            batch.delete(ref);
-        });
-        await batch.commit();
-        loadResponseTable();
-    }
-}
-
-async function deleteAllResponses() {
-    if(confirm("DANGER: This will wipe ALL records for this form. Continue?")) {
-        const snap = await db.collection('submissions').doc(activeFormId).collection('entries').get();
-        const batch = db.batch();
-        snap.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        loadResponseTable();
-    }
-}
-
-function exportToCSV() {
-    const table = document.getElementById('response-table');
-    let csv = [];
-    const rows = table.querySelectorAll("tr");
-    for (let i = 0; i < rows.length; i++) {
-        const row = [], cols = rows[i].querySelectorAll("td, th");
-        // Skip 'Select' and 'Action' columns
-        for (let j = 1; j < cols.length - 1; j++) row.push(`"${cols[j].innerText}"`);
-        csv.push(row.join(","));
-    }
-    const blob = new Blob([csv.join("\n")], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `Responses_${activeFormId}.csv`);
-    a.click();
-}
-
-// About Page
-function renderAbout(container) {
     container.innerHTML = `
-        <div class="max-w-xl mx-auto bg-white p-10 rounded-3xl shadow-xl text-center">
-            <h2 class="text-3xl font-bold mb-6">Contact Developer</h2>
-            <p class="text-lg font-semibold">Vipul Bishnoi</p>
-            <p class="text-slate-500 mb-6">Full Stack Developer</p>
-            <div class="space-y-4 mb-8">
-                <p>📞 +91 94xxxxxx07</p>
-                <a href="mailto:vipulbishnoi2992@gmail.com" class="block text-blue-600">vipulbishnoi2992@gmail.com</a>
-            </div>
-            <a href="https://resume-vipul.netlify.app/" target="_blank" class="block w-full py-4 bg-slate-900 text-white rounded-xl font-bold">View My Portfolio</a>
+        <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in">
+            <h2 class="text-2xl font-bold mb-2">Admin Access</h2>
+            <p class="text-slate-500 text-sm mb-8">Enter your credentials to manage forms.</p>
+            <input type="email" id="adm-email" placeholder="Email Address" class="w-full p-4 mb-4 rounded-xl border bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 transition">
+            <input type="password" id="adm-pass" placeholder="Password" class="w-full p-4 mb-8 rounded-xl border bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 transition">
+            <button onclick="handleLogin()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition">Sign In</button>
         </div>
     `;
 }
 
-function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-function closeResponseModal() { document.getElementById('response-view-modal').classList.add('hidden'); }
+async function handleLogin() {
+    const email = document.getElementById('adm-email').value;
+    const pass = document.getElementById('adm-pass').value;
+    try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        document.getElementById('auth-status').innerText = "Admin Active";
+        showPage('admin-dash');
+    } catch (e) {
+        alert("Authentication Failed: " + e.message);
+        showPage('admin-login');
+    }
+}
 
-// Run User Portal by default
+// ADMIN DASHBOARD (The management center)
+async function renderAdminDashboard(container) {
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-bold">Admin Portal</h2>
+            <button onclick="logout()" class="text-sm text-red-500 font-bold">Logout</button>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="font-bold mb-4">Form Controls</h3>
+                <div id="admin-form-list" class="space-y-4">Loading forms...</div>
+            </div>
+            <div class="bg-blue-600 p-8 rounded-2xl text-white shadow-xl">
+                <h3 class="text-xl font-bold mb-2">Quick Tip</h3>
+                <p class="opacity-80">Use the 'Visible' toggle to instantly show or hide forms from the User Portal without deleting them.</p>
+            </div>
+        </div>
+    `;
+    
+    const list = document.getElementById('admin-form-list');
+    const snap = await db.collection('forms').get();
+    list.innerHTML = "";
+
+    snap.forEach(doc => {
+        const f = doc.data();
+        const item = document.createElement('div');
+        item.className = "flex justify-between items-center p-4 bg-slate-50 rounded-xl";
+        item.innerHTML = `
+            <div>
+                <p class="font-bold">${f.name}</p>
+                <span class="text-[10px] ${f.visible ? 'text-green-600' : 'text-slate-400'}">${f.visible ? 'ACTIVE' : 'HIDDEN'}</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="viewResponses('${doc.id}', '${f.name}')" class="text-xs bg-white px-3 py-1 border rounded shadow-sm hover:bg-slate-100">Responses</button>
+                <button onclick="toggleVisibility('${doc.id}', ${f.visible})" class="text-xs bg-slate-800 text-white px-3 py-1 rounded shadow-sm">${f.visible ? 'Hide' : 'Show'}</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+async function toggleVisibility(id, current) {
+    await db.collection('forms').doc(id).update({ visible: !current });
+    showPage('admin-dash');
+}
+
+async function logout() {
+    await auth.signOut();
+    document.getElementById('auth-status').innerText = "Guest Mode";
+    showPage('user-home');
+}
+
+// Initialization
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('auth-status').innerText = "Admin Active";
+    }
+});
+
 showPage('user-home');
